@@ -104,7 +104,6 @@ pub fn get_clipboard() -> Option<String> {
         .and_then(|mut cb| cb.get_text().ok().map(|s| s.to_string()))
 }
 
-#[allow(dead_code)]
 pub fn set_clipboard(text: &str) -> bool {
     arboard::Clipboard::new()
         .ok()

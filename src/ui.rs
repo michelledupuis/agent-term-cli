@@ -37,7 +37,6 @@ fn draw_tab_bar(frame: &mut Frame, app: &App, area: Rect) {
                 TabState::Active => " ●",
                 TabState::Disconnected => " ○",
                 TabState::Connecting | TabState::Starting => " ...",
-                TabState::Reconnecting => " ↻",
             };
             let scrollback_badge = if !tab.scrollback.is_at_bottom() {
                 " ↑"
@@ -113,7 +112,7 @@ fn draw_terminal(frame: &mut Frame, app: &App, area: Rect) {
         .border_style(match tab.state {
             TabState::Active => Style::default().fg(Color::Green),
             TabState::Disconnected => Style::default().fg(Color::Red),
-            TabState::Connecting | TabState::Starting | TabState::Reconnecting => {
+            TabState::Connecting | TabState::Starting => {
                 Style::default().fg(Color::Yellow)
             }
         });
@@ -135,11 +134,6 @@ fn draw_terminal(frame: &mut Frame, app: &App, area: Rect) {
         }
         TabState::Connecting | TabState::Starting => {
             let msg = format!("Connecting to {}...", tab.config.url);
-            let para = Paragraph::new(msg).style(Style::default().fg(Color::Yellow));
-            frame.render_widget(para, inner);
-        }
-        TabState::Reconnecting => {
-            let msg = "Reconnecting...";
             let para = Paragraph::new(msg).style(Style::default().fg(Color::Yellow));
             frame.render_widget(para, inner);
         }
@@ -220,7 +214,6 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: Rect) {
             TabState::Disconnected => "Disconnected",
             TabState::Connecting => "Connecting...",
             TabState::Starting => "Starting...",
-            TabState::Reconnecting => "Reconnecting...",
         }
     );
 
