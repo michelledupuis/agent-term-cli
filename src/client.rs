@@ -97,8 +97,9 @@ pub struct SearchResult {
 impl McpClient {
     pub fn new(url: &str, token: &str) -> Self {
         let agent = ureq::Agent::new_with_config(
-            ureq::config::Config::new()
-                .timeout_global(Some(Duration::from_secs(30))),
+            ureq::Agent::config_builder()
+                .timeout_global(Some(Duration::from_secs(30)))
+                .build(),
         );
         Self {
             url: url.to_string(),
