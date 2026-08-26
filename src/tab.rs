@@ -9,8 +9,6 @@ pub enum TabState {
     Connecting,
     Starting,
     Active,
-    #[allow(dead_code)]
-    Reconnecting,
 }
 
 pub struct Tab {

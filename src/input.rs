@@ -20,8 +20,6 @@ pub enum AppAction {
     SubmitLine,
     Backspace,
     InsertChar(char),
-    #[allow(dead_code)]
-    InsertString(String),
     CopySelection,
     PasteClipboard,
     HistoryUp,

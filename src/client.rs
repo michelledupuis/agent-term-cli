@@ -2,7 +2,6 @@ use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct McpClient {
     url: String,

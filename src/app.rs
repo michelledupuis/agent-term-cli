@@ -51,11 +51,6 @@ impl App {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn active_tab(&self) -> Option<&Tab> {
-        self.tabs.get(self.active_tab)
-    }
-
     pub fn active_tab_mut(&mut self) -> Option<&mut Tab> {
         self.tabs.get_mut(self.active_tab)
     }
@@ -180,12 +175,6 @@ impl App {
                     tab.cursor_x += 1;
                 }
             }
-            AppAction::InsertString(s) => {
-                if let Some(tab) = self.active_tab_mut() {
-                    tab.input_buffer.push_str(&s);
-                    tab.cursor_x += s.len();
-                }
-            }
             AppAction::HistoryUp => {
                 if let Some(tab) = self.active_tab_mut() {
                     tab.history.save_current_input(&tab.input_buffer);
@@ -226,7 +215,14 @@ impl App {
                     }
                 }
             }
-            AppAction::CopySelection => {}
+            AppAction::CopySelection => {
+                if let Some(tab) = self.active_tab_mut() {
+                    let text = tab.screen_buffer.join("\n");
+                    if !text.is_empty() {
+                        let _ = crate::input::set_clipboard(&text);
+                    }
+                }
+            }
             AppAction::PasteClipboard => {
                 if let Some(text) = crate::input::get_clipboard() {
                     if let Some(tab) = self.active_tab_mut() {
