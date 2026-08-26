@@ -1,4 +1,4 @@
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AppAction {
@@ -31,6 +31,9 @@ pub enum AppAction {
 
 pub fn handle_event() -> anyhow::Result<AppAction> {
     if let Event::Key(key) = event::read()? {
+        if key.kind != KeyEventKind::Press {
+            return Ok(AppAction::None);
+        }
         Ok(handle_key(key))
     } else {
         Ok(AppAction::None)
