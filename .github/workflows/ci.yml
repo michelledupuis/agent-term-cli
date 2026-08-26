@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
 
@@ -34,7 +35,6 @@ jobs:
   build-release:
     name: Build ${{ matrix.target }}
     needs: [check, test]
-    if: github.ref == 'refs/heads/main'
     strategy:
       matrix:
         include:
@@ -75,3 +75,27 @@ jobs:
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}
+
+  release:
+    name: Create Release
+    needs: [build-release]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/agent-term-cli-linux-x64/agent-term-cli-linux-x64
+            artifacts/agent-term-cli-macos-arm64/agent-term-cli-macos-arm64
+            artifacts/agent-term-cli-windows-x64.exe/agent-term-cli-windows-x64.exe
