@@ -75,13 +75,14 @@ fn handle_key(key: KeyEvent) -> AppAction {
         KeyCode::F(5) => AppAction::Reconnect,
         KeyCode::F(9) => AppAction::ToggleStatusBar,
         KeyCode::F(1) => AppAction::Help,
-        KeyCode::Char('c') if mods.contains(KeyModifiers::CONTROL) => AppAction::CtrlC,
-        KeyCode::Char('z') if mods.contains(KeyModifiers::CONTROL) => AppAction::CtrlZ,
+        // IMPORTANT: Ctrl+Shift+C must be checked BEFORE Ctrl+C
         KeyCode::Char('c')
             if mods.contains(KeyModifiers::CONTROL) && mods.contains(KeyModifiers::SHIFT) =>
         {
             AppAction::CopySelection
         }
+        KeyCode::Char('c') if mods.contains(KeyModifiers::CONTROL) => AppAction::CtrlC,
+        KeyCode::Char('z') if mods.contains(KeyModifiers::CONTROL) => AppAction::CtrlZ,
         KeyCode::Char('v') if mods.contains(KeyModifiers::CONTROL) => AppAction::PasteClipboard,
         KeyCode::Insert if mods.contains(KeyModifiers::SHIFT) => AppAction::PasteClipboard,
         KeyCode::Up if !mods.contains(KeyModifiers::SHIFT) => AppAction::HistoryUp,

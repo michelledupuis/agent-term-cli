@@ -114,6 +114,11 @@ impl Tab {
     }
 
     pub fn connect(&mut self) -> Result<()> {
+        if self.config.url.is_empty() {
+            self.state = TabState::Disconnected;
+            return Err(anyhow::anyhow!("No URL configured"));
+        }
+
         self.state = TabState::Connecting;
 
         if !self.health_check() {
@@ -174,12 +179,19 @@ impl Tab {
 
     fn update_screen(&mut self, output: ScreenOutput) {
         let lines: Vec<String> = output.output.lines().map(String::from).collect();
-        self.screen_metadata = output.metadata;
-        self.cursor_x = self
-            .screen_metadata
-            .as_ref()
-            .map(|m| m.cursor_x)
-            .unwrap_or(0);
+
+        // Only update cursor_x from metadata on first screen, not during user typing
+        if self.last_screen.is_none() {
+            self.screen_metadata = output.metadata;
+            self.cursor_x = self
+                .screen_metadata
+                .as_ref()
+                .map(|m| m.cursor_x)
+                .unwrap_or(0);
+        } else {
+            // Update metadata but don't overwrite cursor_x when user is typing
+            self.screen_metadata = output.metadata;
+        }
 
         // Diff with last screen to find new lines for scrollback
         let screen_text = output.output.clone();
@@ -194,8 +206,7 @@ impl Tab {
                         .collect();
                     self.scrollback.append_lines(appended);
                 } else {
-                    // Screen changed completely (e.g., clear, vim, htop)
-                    // Replace scrollback tail with new content
+                    // Screen changed completely — replace scrollback tail with new content
                     let replace_count = old_lines.len().min(self.scrollback.lines.len());
                     if replace_count > 0 {
                         let drain_start = self.scrollback.lines.len() - replace_count;
@@ -251,11 +262,5 @@ impl Tab {
             self.client.resize(sid, cols, rows)?;
         }
         Ok(())
-    }
-}
-
-impl Drop for Tab {
-    fn drop(&mut self) {
-        self.end_session();
     }
 }

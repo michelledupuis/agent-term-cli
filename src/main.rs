@@ -22,10 +22,6 @@ struct Args {
     #[arg(long)]
     config: Option<String>,
 
-    /// Add a new terminal interactively
-    #[arg(long)]
-    add: bool,
-
     /// List configured terminals
     #[arg(long)]
     list: bool,
@@ -49,7 +45,7 @@ fn main() -> Result<()> {
 
     if args.list {
         for (i, t) in config.terminals.iter().enumerate() {
-            println!("[{}] {} — {} ({})", i, t.name, t.url, t.shell.as_deref().unwrap_or("bash"));
+            println!("[{}] {} — {} ({})", i + 1, t.name, t.url, t.shell.as_deref().unwrap_or("bash"));
         }
         return Ok(());
     }
@@ -63,7 +59,7 @@ fn main() -> Result<()> {
 
     let mut app = app::App::new(config, config_path);
 
-    // Auto-connect to all terminals on startup
+    // Auto-connect to all terminals on startup (non-blocking)
     for tab in app.tabs.iter_mut() {
         let _ = tab.connect();
     }
@@ -96,7 +92,7 @@ fn main() -> Result<()> {
         }
     }
 
-    // Cleanup
+    // Cleanup - end all sessions
     for tab in app.tabs.iter_mut() {
         tab.end_session();
     }
