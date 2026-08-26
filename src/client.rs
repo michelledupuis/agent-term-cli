@@ -140,7 +140,11 @@ impl McpClient {
     }
 
     pub fn health_check(&self) -> bool {
-        let base_url = self.url.trim_end_matches("/mcp");
+        let base_url = if self.url.ends_with("/mcp") {
+            self.url.trim_end_matches("/mcp").to_string()
+        } else {
+            self.url.trim_end_matches('/').to_string()
+        };
         let health_url = format!("{}/health", base_url);
         self.agent
             .get(&health_url)

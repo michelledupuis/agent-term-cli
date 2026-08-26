@@ -4,6 +4,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 pub enum AppAction {
     None,
     Quit,
+    Cancel,
     NextTab,
     PrevTab,
     SwitchTab(usize),
@@ -28,9 +29,6 @@ pub enum AppAction {
     AutoComplete,
     CtrlC,
     CtrlZ,
-    ReverseSearch,
-    #[allow(dead_code)]
-    ToggleScrollback,
 }
 
 pub fn handle_event() -> anyhow::Result<AppAction> {
@@ -46,6 +44,7 @@ fn handle_key(key: KeyEvent) -> AppAction {
 
     match key.code {
         KeyCode::Char('q') if mods.contains(KeyModifiers::CONTROL) => AppAction::Quit,
+        KeyCode::Esc => AppAction::Cancel,
         KeyCode::Tab if mods.contains(KeyModifiers::CONTROL) => {
             if mods.contains(KeyModifiers::SHIFT) {
                 AppAction::PrevTab
@@ -88,7 +87,6 @@ fn handle_key(key: KeyEvent) -> AppAction {
         KeyCode::Up if !mods.contains(KeyModifiers::SHIFT) => AppAction::HistoryUp,
         KeyCode::Down if !mods.contains(KeyModifiers::SHIFT) => AppAction::HistoryDown,
         KeyCode::Tab if !mods.contains(KeyModifiers::CONTROL) => AppAction::AutoComplete,
-        KeyCode::Char('r') if mods.contains(KeyModifiers::CONTROL) => AppAction::ReverseSearch,
         KeyCode::Enter => AppAction::SubmitLine,
         KeyCode::Backspace => AppAction::Backspace,
         KeyCode::Char(c) => {

@@ -112,14 +112,19 @@ impl Config {
     }
 
     pub fn history_path(name: &str) -> PathBuf {
+        // Sanitize name for use as filename
+        let safe_name: String = name
+            .chars()
+            .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+            .collect();
         if cfg!(windows) {
             let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
-            PathBuf::from(appdata).join("agent-term-cli").join("history").join(format!("{name}.json"))
+            PathBuf::from(appdata).join("agent-term-cli").join("history").join(format!("{safe_name}.json"))
         } else if cfg!(target_os = "macos") {
             let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
             PathBuf::from(home)
                 .join("Library/Application Support/agent-term-cli/history")
-                .join(format!("{name}.json"))
+                .join(format!("{safe_name}.json"))
         } else {
             let config_dir = std::env::var("XDG_CONFIG_HOME")
                 .unwrap_or_else(|_| {
@@ -128,7 +133,7 @@ impl Config {
                 });
             PathBuf::from(config_dir)
                 .join("agent-term-cli/history")
-                .join(format!("{name}.json"))
+                .join(format!("{safe_name}.json"))
         }
     }
 }

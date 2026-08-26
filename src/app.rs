@@ -24,7 +24,6 @@ pub struct App {
     pub prompt_url: String,
     pub prompt_token: String,
     pub prompt_shell: String,
-    pub prompt_cursor: usize,
 }
 
 impl App {
@@ -49,7 +48,6 @@ impl App {
             prompt_url: String::new(),
             prompt_token: String::new(),
             prompt_shell: String::new(),
-            prompt_cursor: 0,
         }
     }
 
@@ -63,6 +61,16 @@ impl App {
     }
 
     pub fn handle_action(&mut self, action: AppAction) -> Result<()> {
+        // Cancel dismisses help and cancels prompt
+        if action == AppAction::Cancel {
+            if self.show_help {
+                self.show_help = false;
+            } else if self.prompt_mode.is_some() {
+                self.prompt_mode = None;
+            }
+            return Ok(());
+        }
+
         if self.show_help {
             self.show_help = false;
             return Ok(());
@@ -77,6 +85,7 @@ impl App {
             AppAction::Quit => {
                 self.running = false;
             }
+            AppAction::Cancel => unreachable!(),
             AppAction::NextTab => {
                 if !self.tabs.is_empty() {
                     self.active_tab = (self.active_tab + 1) % self.tabs.len();
@@ -228,16 +237,6 @@ impl App {
                     }
                 }
             }
-            AppAction::ReverseSearch => {}
-            AppAction::ToggleScrollback => {
-                if let Some(tab) = self.active_tab_mut() {
-                    if tab.scrollback.is_at_bottom() {
-                        tab.scrollback.scroll_to_top();
-                    } else {
-                        tab.scrollback.scroll_to_bottom();
-                    }
-                }
-            }
             AppAction::None => {}
         }
         Ok(())
@@ -259,15 +258,12 @@ impl App {
                 match self.prompt_mode.as_ref().unwrap() {
                     PromptMode::Url => {
                         self.prompt_url.pop();
-                        self.prompt_cursor = self.prompt_url.len();
                     }
                     PromptMode::Token => {
                         self.prompt_token.pop();
-                        self.prompt_cursor = self.prompt_token.len();
                     }
                     PromptMode::Shell => {
                         self.prompt_shell.pop();
-                        self.prompt_cursor = self.prompt_shell.len();
                     }
                 }
             }
@@ -275,15 +271,12 @@ impl App {
                 match self.prompt_mode.as_ref().unwrap() {
                     PromptMode::Url => {
                         self.prompt_url.push(c);
-                        self.prompt_cursor = self.prompt_url.len();
                     }
                     PromptMode::Token => {
                         self.prompt_token.push(c);
-                        self.prompt_cursor = self.prompt_token.len();
                     }
                     PromptMode::Shell => {
                         self.prompt_shell.push(c);
-                        self.prompt_cursor = self.prompt_shell.len();
                     }
                 }
             }
@@ -297,7 +290,6 @@ impl App {
         self.prompt_url.clear();
         self.prompt_token.clear();
         self.prompt_shell = self.config.general.default_shell.clone();
-        self.prompt_cursor = 0;
     }
 
     fn advance_prompt(&mut self) {
@@ -307,11 +299,9 @@ impl App {
                     return;
                 }
                 self.prompt_mode = Some(PromptMode::Token);
-                self.prompt_cursor = 0;
             }
             PromptMode::Token => {
                 self.prompt_mode = Some(PromptMode::Shell);
-                self.prompt_cursor = self.prompt_shell.len();
             }
             PromptMode::Shell => {
                 self.finish_prompt();

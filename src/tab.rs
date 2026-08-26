@@ -194,11 +194,11 @@ impl Tab {
         }
 
         // Diff with last screen to find new lines for scrollback
-        let screen_text = output.output.clone();
-        if let Some(ref last) = self.last_screen {
-            if *last != screen_text {
+        let screen_changed = self.last_screen.as_ref() != Some(&output.output);
+        if screen_changed {
+            if let Some(ref last) = self.last_screen {
                 let old_lines: Vec<&str> = last.lines().collect();
-                let new_lines: Vec<&str> = screen_text.lines().collect();
+                let new_lines: Vec<&str> = output.output.lines().collect();
                 if new_lines.len() > old_lines.len() {
                     let appended: Vec<String> = new_lines[old_lines.len()..]
                         .iter()
@@ -215,12 +215,12 @@ impl Tab {
                     self.scrollback
                         .append_lines(new_lines.iter().map(|s| s.to_string()).collect());
                 }
+            } else {
+                // First screen — add all lines to scrollback
+                self.scrollback.append_lines(lines.clone());
             }
-        } else {
-            // First screen — add all lines to scrollback
-            self.scrollback.append_lines(lines.clone());
         }
-        self.last_screen = Some(screen_text);
+        self.last_screen = Some(output.output);
         self.screen_buffer = lines;
     }
 

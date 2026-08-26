@@ -340,10 +340,12 @@ fn draw_prompt_overlay(frame: &mut Frame, app: &App) {
     let para = Paragraph::new(prompt_lines).block(block);
     frame.render_widget(para, popup_area);
 
-    // Set cursor position for the active field
+    // Set cursor position for the active field, clamped to popup bounds
+    let popup_inner_width = popup_area.width.saturating_sub(2); // account for borders
     match mode {
         PromptMode::Url => {
-            let cursor_x = popup_area.x + 13 + app.prompt_url.len() as u16;
+            let cursor_x = (popup_area.x + 13 + app.prompt_url.len() as u16)
+                .min(popup_area.x + popup_inner_width);
             let cursor_y = popup_area.y + 2;
             frame.set_cursor_position((cursor_x, cursor_y));
         }
@@ -353,7 +355,8 @@ fn draw_prompt_overlay(frame: &mut Frame, app: &App) {
             frame.set_cursor_position((cursor_x, cursor_y));
         }
         PromptMode::Shell => {
-            let cursor_x = popup_area.x + 13 + app.prompt_shell.len() as u16;
+            let cursor_x = (popup_area.x + 13 + app.prompt_shell.len() as u16)
+                .min(popup_area.x + popup_inner_width);
             let cursor_y = popup_area.y + 4;
             frame.set_cursor_position((cursor_x, cursor_y));
         }
@@ -396,10 +399,6 @@ pub fn draw_help_overlay(frame: &mut Frame) {
         Line::from(vec![
             Span::styled("  Ctrl+Z       ", Style::default().fg(Color::Yellow)),
             Span::raw("Send SIGTSTP"),
-        ]),
-        Line::from(vec![
-            Span::styled("  Ctrl+R       ", Style::default().fg(Color::Yellow)),
-            Span::raw("Reverse history search"),
         ]),
         Line::from(vec![
             Span::styled("  Tab          ", Style::default().fg(Color::Yellow)),
