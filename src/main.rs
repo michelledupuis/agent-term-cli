@@ -30,6 +30,14 @@ struct Args {
 fn main() -> Result<()> {
     let args = Args::parse();
 
+    // Set panic hook to restore terminal state on crash
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let _ = disable_raw_mode();
+        let _ = execute!(io::stdout(), LeaveAlternateScreen);
+        default_hook(info);
+    }));
+
     let config_path = match args.config {
         Some(p) => std::path::PathBuf::from(p),
         None => config::Config::default_path(),
@@ -72,7 +80,9 @@ fn main() -> Result<()> {
         // Poll screen from active tab periodically
         if last_poll.elapsed() >= poll_interval {
             if let Some(tab) = app.active_tab_mut() {
-                let _ = tab.poll_screen();
+                if let Err(e) = tab.poll_screen() {
+                    eprintln!("Poll error: {}", e);
+                }
             }
             last_poll = std::time::Instant::now();
         }
@@ -80,13 +90,13 @@ fn main() -> Result<()> {
         // Draw UI
         terminal.draw(|frame| {
             ui::draw(frame, &app);
-            if app.show_help {
+            if app.show_help && app.prompt_mode.is_none() {
                 ui::draw_help_overlay(frame);
             }
         })?;
 
-        // Handle input (with timeout so we don't block polling)
-        if crossterm::event::poll(Duration::from_millis(10))? {
+        // Handle input (process all queued events to prevent input lag)
+        while crossterm::event::poll(Duration::ZERO)? {
             let action = input::handle_event()?;
             app.handle_action(action)?;
         }

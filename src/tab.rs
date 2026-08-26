@@ -2,6 +2,7 @@ use crate::client::{McpClient, ScreenMetadata, ScreenOutput};
 use crate::config::TerminalConfig;
 use crate::history::CommandHistory;
 use anyhow::Result;
+use std::collections::VecDeque;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TabState {
@@ -27,7 +28,7 @@ pub struct Tab {
 }
 
 pub struct Scrollback {
-    pub lines: Vec<String>,
+    pub lines: VecDeque<String>,
     pub max_lines: usize,
     pub cursor: usize,
 }
@@ -35,7 +36,7 @@ pub struct Scrollback {
 impl Scrollback {
     pub fn new(max_lines: usize) -> Self {
         Self {
-            lines: Vec::with_capacity(max_lines.min(1000)),
+            lines: VecDeque::with_capacity(max_lines.min(1000)),
             max_lines,
             cursor: 0,
         }
@@ -43,10 +44,10 @@ impl Scrollback {
 
     pub fn append_lines(&mut self, new_lines: Vec<String>) {
         for line in new_lines {
-            self.lines.push(line);
+            self.lines.push_back(line);
         }
         while self.lines.len() > self.max_lines {
-            self.lines.remove(0);
+            self.lines.pop_front();
         }
     }
 
@@ -73,14 +74,12 @@ impl Scrollback {
 
     pub fn visible_lines(&self, viewport_height: usize) -> Vec<&str> {
         if self.cursor == 0 {
-            // Live view: show last N lines
             let start = self.lines.len().saturating_sub(viewport_height);
-            self.lines[start..].iter().map(|s| s.as_str()).collect()
+            self.lines.range(start..).map(|s| s.as_str()).collect()
         } else {
-            // Scrollback view: show lines around cursor
             let start = self.lines.len().saturating_sub(self.cursor + viewport_height);
             let end = self.lines.len().saturating_sub(self.cursor);
-            self.lines[start..end].iter().map(|s| s.as_str()).collect()
+            self.lines.range(start..end).map(|s| s.as_str()).collect()
         }
     }
 
@@ -204,7 +203,7 @@ impl Tab {
                         .collect();
                     self.scrollback.append_lines(appended);
                 } else {
-                    // Screen changed completely — replace scrollback tail with new content
+                    // Screen changed completely — replace scrollback tail
                     let replace_count = old_lines.len().min(self.scrollback.lines.len());
                     if replace_count > 0 {
                         let drain_start = self.scrollback.lines.len() - replace_count;
@@ -230,6 +229,8 @@ impl Tab {
         self.state = TabState::Disconnected;
         self.screen_buffer.clear();
         self.last_screen = None;
+        self.input_buffer.clear();
+        self.cursor_x = 0;
 
         let history_path = crate::config::Config::history_path(&self.name);
         let _ = self.history.save(&history_path);

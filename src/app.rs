@@ -128,9 +128,10 @@ impl App {
             }
             AppAction::Reconnect => {
                 let idx = self.active_tab;
-                let should_reconnect = self.tabs.get(idx).is_some_and(|tab| {
-                    tab.state == crate::tab::TabState::Disconnected && !tab.config.url.is_empty()
-                });
+                let should_reconnect = !self.connecting
+                    && self.tabs.get(idx).is_some_and(|tab| {
+                        tab.state == crate::tab::TabState::Disconnected && !tab.config.url.is_empty()
+                    });
                 if should_reconnect {
                     self.connecting = true;
                     if let Some(tab) = self.active_tab_mut() {
@@ -154,7 +155,7 @@ impl App {
                         }
                         tab.history.reset_index();
 
-                        let cmd = format!("{}\r", line);
+                        let cmd = format!("{}\r\n", line);
                         let _ = tab.send_input(&cmd);
 
                         tab.input_buffer.clear();
@@ -177,18 +178,22 @@ impl App {
             }
             AppAction::HistoryUp => {
                 if let Some(tab) = self.active_tab_mut() {
-                    tab.history.save_current_input(&tab.input_buffer);
-                    if let Some(cmd) = tab.history.up() {
-                        tab.input_buffer = cmd.to_string();
-                        tab.cursor_x = tab.input_buffer.len();
+                    if tab.scrollback.is_at_bottom() {
+                        tab.history.save_current_input(&tab.input_buffer);
+                        if let Some(cmd) = tab.history.up() {
+                            tab.input_buffer = cmd.to_string();
+                            tab.cursor_x = tab.input_buffer.len();
+                        }
                     }
                 }
             }
             AppAction::HistoryDown => {
                 if let Some(tab) = self.active_tab_mut() {
-                    if let Some(cmd) = tab.history.down() {
-                        tab.input_buffer = cmd;
-                        tab.cursor_x = tab.input_buffer.len();
+                    if tab.scrollback.is_at_bottom() {
+                        if let Some(cmd) = tab.history.down() {
+                            tab.input_buffer = cmd;
+                            tab.cursor_x = tab.input_buffer.len();
+                        }
                     }
                 }
             }
@@ -224,10 +229,22 @@ impl App {
                 }
             }
             AppAction::PasteClipboard => {
-                if let Some(text) = crate::input::get_clipboard() {
+                if self.prompt_mode.is_some() {
+                    // In prompt mode, paste into the active prompt field
+                    if let Some(text) = crate::input::get_clipboard() {
+                        let cleaned = text.replace(['\r', '\n'], "");
+                        for c in cleaned.chars() {
+                            match self.prompt_mode.as_ref().unwrap() {
+                                PromptMode::Url => self.prompt_url.push(c),
+                                PromptMode::Token => self.prompt_token.push(c),
+                                PromptMode::Shell => self.prompt_shell.push(c),
+                            }
+                        }
+                    }
+                } else if let Some(text) = crate::input::get_clipboard() {
                     if let Some(tab) = self.active_tab_mut() {
                         if tab.state == crate::tab::TabState::Active {
-                            let cleaned = text.replace(['\r', '\n'], "\r");
+                            let cleaned = text.replace("\r\n", "\r").replace('\n', "\r");
                             let _ = tab.send_input(&cleaned);
                         }
                     }
@@ -239,6 +256,10 @@ impl App {
     }
 
     fn handle_prompt_action(&mut self, action: AppAction) -> Result<()> {
+        let mode = match &self.prompt_mode {
+            Some(m) => m.clone(),
+            None => return Ok(()),
+        };
         match action {
             AppAction::Quit => {
                 self.prompt_mode = None;
@@ -251,7 +272,7 @@ impl App {
                 self.advance_prompt();
             }
             AppAction::Backspace => {
-                match self.prompt_mode.as_ref().unwrap() {
+                match &mode {
                     PromptMode::Url => {
                         self.prompt_url.pop();
                     }
@@ -264,7 +285,7 @@ impl App {
                 }
             }
             AppAction::InsertChar(c) => {
-                match self.prompt_mode.as_ref().unwrap() {
+                match &mode {
                     PromptMode::Url => {
                         self.prompt_url.push(c);
                     }
@@ -321,10 +342,15 @@ impl App {
         };
 
         let scrollback_max = self.config.general.scrollback_lines;
-        let mut tab = Tab::new(tc, scrollback_max);
+        let mut tab = Tab::new(tc.clone(), scrollback_max);
 
-        // Try to connect immediately
-        let _ = tab.connect();
+        // Try to connect immediately (only if URL is non-empty)
+        if !tc.url.is_empty() {
+            let _ = tab.connect();
+        }
+
+        self.config.terminals.push(tc);
+        let _ = self.config.save(&self.config_path);
 
         self.tabs.push(tab);
         self.active_tab = self.tabs.len() - 1;
@@ -348,6 +374,7 @@ impl App {
         }
         self.tabs.remove(self.active_tab);
         if self.tabs.is_empty() {
+            self.active_tab = 0;
             self.running = false;
         } else if self.active_tab >= self.tabs.len() {
             self.active_tab = self.tabs.len() - 1;

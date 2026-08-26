@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
+use std::time::Duration;
 
 #[derive(Debug)]
 pub struct McpClient {
@@ -95,7 +96,10 @@ pub struct SearchResult {
 
 impl McpClient {
     pub fn new(url: &str, token: &str) -> Self {
-        let agent = ureq::Agent::new_with_defaults();
+        let agent = ureq::Agent::new_with_config(
+            ureq::config::Config::new()
+                .timeout_global(Some(Duration::from_secs(30))),
+        );
         Self {
             url: url.to_string(),
             token: token.to_string(),

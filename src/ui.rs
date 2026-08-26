@@ -468,3 +468,12 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         ])
         .split(popup_layout[1])[1]
 }
+
+fn ensure_min_size(area: Rect, min_width: u16, min_height: u16) -> Rect {
+    Rect {
+        x: area.x,
+        y: area.y,
+        width: area.width.max(min_width),
+        height: area.height.max(min_height),
+    }
+}
