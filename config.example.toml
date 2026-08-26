@@ -1,0 +1,14 @@
+[general]
+default_shell = "bash"
+default_cols = 120
+default_rows = 40
+poll_interval_ms = 100
+scrollback_lines = 10000
+
+[[terminals]]
+name = "local"
+url = "http://localhost:8080/mcp"
+token = "your-secret-token"
+shell = "bash"
+cols = 120
+rows = 40

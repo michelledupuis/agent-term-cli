@@ -1,0 +1,42 @@
+[package]
+name = "agent-term-cli"
+version = "0.1.0"
+edition = "2021"
+description = "Multi-tab terminal emulator for agent-term MCP servers"
+license = "MIT"
+repository = "https://github.com/michelledupuis/agent-term-cli"
+keywords = ["terminal", "mcp", "agent-term", "tui", "cli"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "agent-term-cli"
+path = "src/main.rs"
+
+[dependencies]
+# TUI
+ratatui = "0.30"
+crossterm = { version = "0.29", features = ["event-stream"] }
+
+# HTTP client
+ureq = { version = "3", features = ["json", "rustls"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.9"
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Error handling
+anyhow = "1"
+
+# Clipboard
+arboard = "3"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
