@@ -80,9 +80,7 @@ fn main() -> Result<()> {
         // Poll screen from active tab periodically
         if last_poll.elapsed() >= poll_interval {
             if let Some(tab) = app.active_tab_mut() {
-                if let Err(e) = tab.poll_screen() {
-                    eprintln!("Poll error: {}", e);
-                }
+                let _ = tab.poll_screen();
             }
             last_poll = std::time::Instant::now();
         }

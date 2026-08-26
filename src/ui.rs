@@ -147,13 +147,19 @@ fn draw_screen(frame: &mut Frame, tab: &crate::tab::Tab, area: Rect) {
     let height = area.height as usize;
     let width = area.width as usize;
 
-    // Get visible lines from scrollback
-    let visible_lines = tab.scrollback.visible_lines(height);
+    // Reserve 1 line for input when at bottom with active input
+    let has_input_line = tab.scrollback.is_at_bottom() && !tab.input_buffer.is_empty();
+    let scrollback_height = if has_input_line {
+        height.saturating_sub(1)
+    } else {
+        height
+    };
+
+    let visible_lines = tab.scrollback.visible_lines(scrollback_height);
 
     let mut lines: Vec<Line> = Vec::new();
 
     for line_text in &visible_lines {
-        // Truncate to terminal width
         let display: String = line_text.chars().take(width).collect();
         lines.push(Line::from(Span::styled(
             display,
@@ -161,16 +167,14 @@ fn draw_screen(frame: &mut Frame, tab: &crate::tab::Tab, area: Rect) {
         )));
     }
 
-    // Add input line at bottom if we're at live view and have input
-    if tab.scrollback.is_at_bottom() && !tab.input_buffer.is_empty() {
-        let input_display: String = tab.input_buffer.chars().take(width).collect();
+    if has_input_line {
+        let input_display: String = tab.input_buffer.chars().take(width.saturating_sub(2)).collect();
         lines.push(Line::from(vec![
             Span::styled("> ", Style::default().fg(Color::Green)),
             Span::styled(input_display, Style::default().fg(Color::White)),
         ]));
     }
 
-    // Pad remaining lines
     while lines.len() < height {
         lines.push(Line::from(""));
     }
@@ -180,9 +184,8 @@ fn draw_screen(frame: &mut Frame, tab: &crate::tab::Tab, area: Rect) {
 
     frame.render_widget(para, area);
 
-    // Render cursor at input position when at live view
     if tab.scrollback.is_at_bottom() {
-        let cursor_x = (tab.cursor_x + 2).min(width) as u16; // +2 for "> " prefix
+        let cursor_x = (tab.cursor_x.saturating_add(2)).min(width) as u16;
         let cursor_y = (line_count.saturating_sub(1)) as u16;
         frame.set_cursor_position((area.x + cursor_x, area.y + cursor_y));
     }
@@ -467,13 +470,4 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
             Constraint::Percentage((100 - percent_x) / 2),
         ])
         .split(popup_layout[1])[1]
-}
-
-fn ensure_min_size(area: Rect, min_width: u16, min_height: u16) -> Rect {
-    Rect {
-        x: area.x,
-        y: area.y,
-        width: area.width.max(min_width),
-        height: area.height.max(min_height),
-    }
 }

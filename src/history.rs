@@ -1,12 +1,13 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
 use std::path::Path;
 
 const DEFAULT_MAX_HISTORY: usize = 1000;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommandHistory {
-    commands: Vec<String>,
+    commands: VecDeque<String>,
     max_history: usize,
     #[serde(skip)]
     index: Option<usize>,
@@ -17,7 +18,7 @@ pub struct CommandHistory {
 impl CommandHistory {
     pub fn new(max_history: usize) -> Self {
         Self {
-            commands: Vec::new(),
+            commands: VecDeque::new(),
             max_history,
             index: None,
             input_buffer: String::new(),
@@ -46,13 +47,12 @@ impl CommandHistory {
         if command.is_empty() {
             return;
         }
-        // Don't duplicate consecutive identical commands
-        if self.commands.last().map(|s| s.as_str()) == Some(&command) {
+        if self.commands.back().map(|s| s.as_str()) == Some(&command) {
             return;
         }
-        self.commands.push(command);
+        self.commands.push_back(command);
         if self.commands.len() > self.max_history {
-            self.commands.remove(0);
+            self.commands.pop_front();
         }
     }
 
@@ -62,12 +62,11 @@ impl CommandHistory {
         }
         match self.index {
             None => {
-                // First up press: save current input, go to last command
                 let last = self.commands.len() - 1;
                 self.index = Some(last);
                 Some(&self.commands[last])
             }
-            Some(0) => None, // Already at top
+            Some(0) => None,
             Some(i) => {
                 self.index = Some(i - 1);
                 Some(&self.commands[i - 1])
@@ -80,7 +79,6 @@ impl CommandHistory {
             None => None,
             Some(i) => {
                 if i + 1 >= self.commands.len() {
-                    // Back to current input
                     self.index = None;
                     Some(self.input_buffer.clone())
                 } else {
@@ -118,23 +116,23 @@ impl CommandHistory {
         } else if matches.len() == 1 {
             Some(matches[0].to_string())
         } else {
-            // Find common prefix among matches
-            let first = matches[0];
-            let mut end = first.len();
+            let first_chars: Vec<char> = matches[0].chars().collect();
+            let mut common_len = first_chars.len();
             for m in &matches[1..] {
+                let other_chars: Vec<char> = m.chars().collect();
                 let mut i = 0;
-                while i < end && i < m.len() && first.as_bytes()[i] == m.as_bytes()[i] {
+                while i < common_len && i < other_chars.len() && first_chars[i] == other_chars[i] {
                     i += 1;
                 }
-                end = i;
+                common_len = i;
             }
-            Some(first[..end].to_string())
+            Some(first_chars[..common_len].iter().collect())
         }
     }
 
     #[allow(dead_code)]
-    pub fn all(&self) -> &[String] {
-        &self.commands
+    pub fn all(&self) -> Vec<&str> {
+        self.commands.iter().map(|s| s.as_str()).collect()
     }
 
     pub fn len(&self) -> usize {
@@ -173,10 +171,19 @@ mod tests {
         assert_eq!(h.up(), Some("third"));
         assert_eq!(h.up(), Some("second"));
         assert_eq!(h.up(), Some("first"));
-        assert_eq!(h.up(), None); // at top
+        assert_eq!(h.up(), None);
 
         assert_eq!(h.down(), Some("second".to_string()));
         assert_eq!(h.down(), Some("third".to_string()));
-        assert_eq!(h.down(), Some(String::new())); // back to empty input
+        assert_eq!(h.down(), Some(String::new()));
+    }
+
+    #[test]
+    fn test_autocomplete_unique_unicode() {
+        let mut h = CommandHistory::new(100);
+        h.push("café".to_string());
+        h.push("caféine".to_string());
+
+        assert_eq!(h.autocomplete_unique("café"), Some("café".to_string()));
     }
 }

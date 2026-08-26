@@ -303,6 +303,9 @@ impl App {
     }
 
     fn start_prompt(&mut self) {
+        if self.prompt_mode.is_some() {
+            return;
+        }
         self.prompt_mode = Some(PromptMode::Url);
         self.prompt_url.clear();
         self.prompt_token.clear();
@@ -310,7 +313,11 @@ impl App {
     }
 
     fn advance_prompt(&mut self) {
-        match self.prompt_mode.as_ref().unwrap() {
+        let mode = match self.prompt_mode.as_ref() {
+            Some(m) => m.clone(),
+            None => return,
+        };
+        match &mode {
             PromptMode::Url => {
                 if self.prompt_url.is_empty() {
                     return;
