@@ -101,8 +101,19 @@ impl McpClient {
                 .timeout_global(Some(Duration::from_secs(30)))
                 .build(),
         );
+        // Normalize URL: ensure it ends with /mcp so all requests target the
+        // correct MCP endpoint.  The health_check derives the /health path
+        // from this, so both paths must be consistent.
+        let url = {
+            let trimmed = url.trim_end_matches('/');
+            if trimmed.ends_with("/mcp") {
+                trimmed.to_string()
+            } else {
+                format!("{}/mcp", trimmed)
+            }
+        };
         Self {
-            url: url.to_string(),
+            url,
             token: token.to_string(),
             agent,
             id: Mutex::new(1),

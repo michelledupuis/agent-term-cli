@@ -69,7 +69,9 @@ fn main() -> Result<()> {
 
     // Auto-connect to all terminals on startup (non-blocking)
     for tab in app.tabs.iter_mut() {
-        let _ = tab.connect();
+        if let Err(e) = tab.connect() {
+            tab.screen_buffer = vec![format!("Connection failed: {}", e)];
+        }
     }
 
     let poll_interval = Duration::from_millis(app.config.general.poll_interval_ms);

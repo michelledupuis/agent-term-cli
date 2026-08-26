@@ -135,7 +135,9 @@ impl App {
                 if should_reconnect {
                     self.connecting = true;
                     if let Some(tab) = self.active_tab_mut() {
-                        let _ = tab.reconnect();
+                        if let Err(e) = tab.reconnect() {
+                            tab.screen_buffer = vec![format!("Connection failed: {}", e)];
+                        }
                     }
                     self.connecting = false;
                 }
@@ -353,7 +355,10 @@ impl App {
 
         // Try to connect immediately (only if URL is non-empty)
         if !tc.url.is_empty() {
-            let _ = tab.connect();
+            if let Err(e) = tab.connect() {
+                // Show the error in the tab so the user knows what went wrong
+                tab.screen_buffer = vec![format!("Connection failed: {}", e)];
+            }
         }
 
         self.config.terminals.push(tc);
