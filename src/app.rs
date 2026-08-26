@@ -229,12 +229,12 @@ impl App {
                 }
             }
             AppAction::PasteClipboard => {
-                if self.prompt_mode.is_some() {
+                if let Some(mode) = &self.prompt_mode {
                     // In prompt mode, paste into the active prompt field
                     if let Some(text) = crate::input::get_clipboard() {
                         let cleaned = text.replace(['\r', '\n'], "");
                         for c in cleaned.chars() {
-                            match self.prompt_mode.as_ref().unwrap() {
+                            match mode {
                                 PromptMode::Url => self.prompt_url.push(c),
                                 PromptMode::Token => self.prompt_token.push(c),
                                 PromptMode::Shell => self.prompt_shell.push(c),
